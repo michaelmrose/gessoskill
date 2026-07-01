@@ -1,0 +1,97 @@
+# Gesso Component Architecture
+
+This document defines the standardized directory structure and API conventions for Gesso UI components. All new components must follow these patterns to ensure consistency across the codebase.
+
+## 1. Directory Structure
+
+### Standard Structure (Preferred)
+
+Most components use a dedicated directory to house implementation details, styling, and interaction logic.
+
+```text
+gesso/
+  components/
+    component_name/
+      attr.clj           ; Attribute builders and CSS class logic
+      core.clj           ; Component Hiccup rendering functions
+      scripts.clj        ; (Optional) Hyperscript interaction logic
+      component_name.css ; (Optional) Component-specific CSS
+
+```
+
+### Legacy Structure
+
+Older components use a flat file structure. These are considered legacy and should be migrated to the standard structure when undergoing significant updates.
+
+```text
+gesso/
+  components/
+    component_name.clj
+
+```
+
+---
+
+## 2. API Convention: Short vs. Canonical Form
+
+Gesso components are designed to support two distinct API surfaces depending on the level of control required.
+
+### Short Form (Convenience)
+
+* **Main Function:** Accepts a single argument (an options map).
+* **Usage:** Ideal for common cases, simple data display, or one-liners.
+* **Implementation:** Internally acts as a wrapper that dispatches to the Canonical Form.
+* **Example:** `(card {:title "User Profile" :content "..."})`
+
+### Canonical Form (Compositional)
+
+* **Main Function:** Variadic, accepts an options map followed by explicit children.
+* **Sub-sections:** Exposes specific functions for subsections (e.g., `card-header`, `card-content`, `card-footer`).
+* **Usage:** Required for complex composition, injecting custom markup, or wrapping interactive elements.
+* **Implementation:** The preferred way to structure more complex components.
+* **Example:**
+```clojure
+(card {:variant :primary}
+  (card-header {:title "User Profile"})
+  (card-content [:div "Custom content..."])
+  (card-footer [:button "Save"]))
+
+```
+
+
+
+---
+
+## 3. File Responsibilities
+
+### `core.clj`
+
+The primary public API.
+
+* Defines the main rendering functions.
+* Dispatches between the Short and Canonical forms.
+* Consumes `attr.clj` to handle class generation and DOM attributes.
+* Consumes `scripts.clj` to attach interactivity when applicable.
+* Returns pure Hiccup vectors.
+
+### `attr.clj`
+
+Encapsulates all logic related to HTML attribute generation and styling.
+
+* Owns `data-*` attributes used for HTMX or JS targeting.
+* Manages class concatenation via `gesso.util/class-names` and `merge-attrs`.
+* Logic here should be pure and focused on building maps for `el` calls.
+
+### `scripts.clj`
+
+Holds interactivity logic.
+
+* **Hyperscript (Preferred):** Logic should be authored using the `gesso.hyperscript` DSL (`hs` macro).
+* Defines event handlers (e.g., `on click`) that target elements via DOM attributes defined in `attr.clj`.
+
+### `component_name.css`
+
+Encapsulates scoped styles.
+
+* These are discovered automatically by the theme build process.
+* Styles should rely on Gesso theme variables.
